@@ -1,0 +1,6 @@
+project/target/
+target/
+.metals
+.scala-build
+.vscode
+.bsp
