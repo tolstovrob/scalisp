@@ -1,4 +1,4 @@
-package runner
+package entrypoint
 
 import scala.io.Source
 import parser.Parser
@@ -13,14 +13,26 @@ def runFile(filename: String): Unit =
   val globalEnv = Env(env, None)
   
   try
-    val source = Source.fromFile(filename)
-    val program = source.mkString
+    val source = Source.fromFile(filename, "UTF-8")
+    var program = source.mkString
     source.close()
     
-    println(s"[SCALISP]: running $filename")
+    if program.nonEmpty && program.charAt(0) == 0xFEFF then
+      program = program.substring(1)
+    
+    program = program.replace("\r\n", "\n").replace("\r", "\n")
+    program = program.trim
+    
+    if program.isEmpty then
+      println("Error: File is empty")
+      return
+
+    program = s"(begin\n$program\n)"
+    
     val expr = Parser.parse(program)
     val value = eval(expr, globalEnv)
     println(valueToString(value))
+    
   catch
     case e: java.io.FileNotFoundException =>
       println(s"Error: File not found: $filename")
