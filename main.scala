@@ -112,44 +112,110 @@ def eval(expr: Expr, env: Env): Value = expr match
       case Value.Lambda(closureEnv, params, body) =>
         val argValues = args.map(eval(_, env))
         eval(body, Env(params.zip(argValues).toMap, Some(closureEnv))) 
+      case other => sys.error(s"Cannot call non-functions: ${valueToString(other)}")
   
   case _ => sys.error("Invalid expression")
 
 
 def globalEnv: Env =
   val builtins = Map[String, Value](
-    "+"    -> Value.Builtin(args => Value.Num(args.map { case Value.Num(d) => d }.sum)),
-    "-"    -> Value.Builtin {
+    "+" -> Value.Builtin { args =>
+      val numbers = args.map {
+        case Value.Num(d) => d
+        case other => sys.error(s"+ expects numbers, got: ${valueToString(other)}")
+      }
+      Value.Num(numbers.sum)
+    },
+    
+    "-" -> Value.Builtin {
       case List(Value.Num(a)) => Value.Num(-a)
       case List(Value.Num(a), Value.Num(b)) => Value.Num(a - b)
-      case _ => sys.error("- expects 1 or 2 numbers")
+      case other => sys.error(s"- expects 1 or 2 numbers, got: ${valueToStringList(other)}")
     },
-    "*"    -> Value.Builtin(args => Value.Num(args.map { case Value.Num(d) => d }.product)),
-    "/"    -> Value.Builtin {
+    
+    "*" -> Value.Builtin { args =>
+      val numbers = args.map {
+        case Value.Num(d) => d
+        case other => sys.error(s"* expects numbers, got: ${valueToString(other)}")
+      }
+      Value.Num(numbers.product)
+    },
+    
+    "/" -> Value.Builtin {
       case List(Value.Num(a), Value.Num(b)) => Value.Num(a / b)
-      case _ => sys.error("/ expects 2 numbers")
+      case other => sys.error(s"/ expects 2 numbers, got: ${valueToStringList(other)}")
     },
-    "="    -> Value.Builtin(args => Value.Num(if args.map { case Value.Num(d) => d }.sliding(2).forall { case List(a,b) => a == b } then 1 else 0)),
-    "<"    -> Value.Builtin(args => Value.Num(if args.map { case Value.Num(d) => d }.sliding(2).forall { case List(a,b) => a < b } then 1 else 0)),
-    ">"    -> Value.Builtin(args => Value.Num(if args.map { case Value.Num(d) => d }.sliding(2).forall { case List(a,b) => a > b } then 1 else 0)),
+    
+    "=" -> Value.Builtin { args =>
+      val numbers = args.map {
+        case Value.Num(d) => d
+        case other => sys.error(s"= expects numbers, got: ${valueToString(other)}")
+      }
+      val result = numbers.sliding(2).forall {
+        case List(a, b) => a == b
+        case _ => true
+      }
+      Value.Num(if result then 1 else 0)
+    },
+    
+    "<" -> Value.Builtin { args =>
+      val numbers = args.map {
+        case Value.Num(d) => d
+        case other => sys.error(s"< expects numbers, got: ${valueToString(other)}")
+      }
+      val result = numbers.sliding(2).forall {
+        case List(a, b) => a < b
+        case _ => true
+      }
+      Value.Num(if result then 1 else 0)
+    },
+    
+    ">" -> Value.Builtin { args =>
+      val numbers = args.map {
+        case Value.Num(d) => d
+        case other => sys.error(s"> expects numbers, got: ${valueToString(other)}")
+      }
+      val result = numbers.sliding(2).forall {
+        case List(a, b) => a > b
+        case _ => true
+      }
+      Value.Num(if result then 1 else 0)
+    },
+    
     "list" -> Value.Builtin(args => Value.Lst(args)),
-    "car"  -> Value.Builtin {
+    
+    "car" -> Value.Builtin {
       case List(Value.Lst(x :: _)) => x
-      case _ => sys.error("car expects non-empty list")
+      case List(Value.Lst(Nil)) => sys.error("car expects non-empty list, got: ()")
+      case List(other) => sys.error(s"car expects list, got: ${valueToString(other)}")
+      case other => sys.error(s"car expects 1 argument, got: ${valueToStringList(other)}")
     },
-    "cdr"  -> Value.Builtin {
+    
+    "cdr" -> Value.Builtin {
       case List(Value.Lst(_ :: xs)) => Value.Lst(xs)
-      case _ => sys.error("cdr expects non-empty list")
+      case List(Value.Lst(Nil)) => sys.error("cdr expects non-empty list, got: ()")
+      case List(other) => sys.error(s"cdr expects list, got: ${valueToString(other)}")
+      case other => sys.error(s"cdr expects 1 argument, got: ${valueToStringList(other)}")
     },
+    
     "cons" -> Value.Builtin {
       case List(x, Value.Lst(xs)) => Value.Lst(x :: xs)
-      case _ => sys.error("cons expects element and list")
+      case List(_, Value.Lst(Nil)) => Value.Lst(List())
+      case List(x, other) => sys.error(s"cons expects list as second argument, got: ${valueToString(other)}")
+      case other => sys.error(s"cons expects 2 arguments, got: ${valueToStringList(other)}")
     },
+    
     "null?" -> Value.Builtin {
       case List(Value.Lst(Nil)) => Value.Num(1)
-      case _ => Value.Num(0)
+      case List(Value.Lst(_)) => Value.Num(0)
+      case List(other) => sys.error(s"null? expects list, got: ${valueToString(other)}")
+      case other => sys.error(s"null? expects 1 argument, got: ${valueToStringList(other)}")
     },
-    "eq?"  -> Value.Builtin(args => Value.Num(if args.head == args(1) then 1 else 0))
+    
+    "eq?" -> Value.Builtin {
+      case List(a, b) => Value.Num(if a == b then 1 else 0)
+      case other => sys.error(s"eq? expects 2 arguments, got: ${valueToStringList(other)}")
+    }
   )
   Env(builtins, None)
 
@@ -162,6 +228,10 @@ def valueToString(v: Value): String = v match
   case Value.Builtin(_) => "<builtin>"
   case Value.Lambda(_, _, _) => "<lambda>"
 
+
+def valueToStringList(values: List[Value]): String =
+  values.map(valueToString).mkString("(", " ", ")")
+  
 
 @main
 def repl(): Unit =
