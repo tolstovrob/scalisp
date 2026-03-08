@@ -63,20 +63,89 @@ def parse(program: String): Expr =
     case _ => sys.error("Invalid syntax")    
       
 
+def exprToValue(expr: Expr): Value = expr match
+  case Expr.Num(v) => Value.Num(v)
+  case Expr.Sym(s) => Value.Sym(s)
+  case Expr.Lst(els) => Value.Lst(els.map(exprToValue))
+
+
+def eval(expr: Expr, env: Env): Value = expr match
+  //
+  // primitives
+  //
+  case Expr.Num(v) => Value.Num(v)
+  case Expr.Sym(name) => env.lookup(name).binds(name)
+
+  //  
+  // special forms
+  //
+  case Expr.Lst(Expr.Sym("quote") :: arg :: Nil) => exprToValue(arg)
+  
+  case Expr.Lst(Expr.Sym("if") :: test :: conseq :: alt :: Nil) =>
+    eval(test, env) match
+      case Value.Num(0) => eval(alt, env)
+      case _ => eval(conseq, env)
+  
+  case Expr.Lst(Expr.Sym("define") :: Expr.Sym(name) :: toSetExpr :: Nil) =>
+    val value = eval(toSetExpr, env)
+    env.binds(name) = value
+    value
+
+  case Expr.Lst(Expr.Sym("set!") :: Expr.Sym(name) :: toSetExpr :: Nil) =>
+    val value = eval(toSetExpr, env)
+    env.lookup(name).binds(name) = value
+    value
+
+  case Expr.Lst(Expr.Sym("lambda") :: Expr.Lst(params) :: body :: Nil) =>
+    val paramNames = params.map {
+      case Expr.Sym(name) => name
+      case _ => sys.error("Invalid lambda parameters")
+    }
+    Value.Lambda(env, paramNames, body)
+
+  //
+  // general calling
+  //
+  case Expr.Lst(proc :: args) =>
+    eval(proc, env) match
+      case Value.Builtin(f) => f(args.map(eval(_, env)))
+      case Value.Lambda(closureEnv, params, body) =>
+        val argValues = args.map(eval(_, env))
+        eval(body, Env(params.zip(argValues).toMap, Some(closureEnv))) 
+  
+  case _ => sys.error("Invalid expression")
+
+
+def globalEnv: Env =
+  val builtins = Map[String, Value]()
+  Env(builtins, None)
+
+
+def valueToString(v: Value): String = v match
+  case Value.Num(v) => v.toString
+  case Value.Str(s) => s
+  case Value.Sym(name) => name
+  case Value.Lst(els) => els.map(valueToString).mkString("(", " ", ")")
+  case Value.Builtin(_) => "<builtin>"
+  case Value.Lambda(_, _, _) => "<lambda>"
+
+
 @main
 def repl(): Unit =
+  val env = globalEnv
   println("Scalist REPL")
+
   while true do
     print("> ")
-
     val line = readLine()
-
+    
     line match
       case "exit" => return
       case _ =>
         try
           val expr = parse(line)
-          println(expr)
+          val value = eval(expr, env)
+          println(valueToString(value))
         catch case e: Exception => println(s"Error: ${e.getMessage}")
     
   
