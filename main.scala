@@ -79,7 +79,9 @@ def eval(expr: Expr, env: Env): Value = expr match
   //  
   // special forms
   //
-  case Expr.Lst(Expr.Sym("quote") :: arg :: Nil) => exprToValue(arg)
+  case Expr.Lst(Expr.Sym("quote") :: rest) => rest match
+    case head :: Nil => exprToValue(head)
+    case _ => sys.error("quote takes exactly 1 argument")
   
   case Expr.Lst(Expr.Sym("if") :: test :: conseq :: alt :: Nil) =>
     eval(test, env) match
