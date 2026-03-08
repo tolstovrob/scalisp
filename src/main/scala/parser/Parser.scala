@@ -6,7 +6,9 @@ import ast.Expr
 
 object Parser:
   def parse(program: String): Expr =
-    val normalized = program
+    val withoutComments = removeComments(program)
+
+    val normalized = withoutComments
       .replace("\n", " ")
       .replace("\r", " ")
       .replace("\t", " ")
@@ -45,3 +47,8 @@ object Parser:
     readFrom(tokens) match
       case (expr, Nil) => expr
       case _ => sys.error("Invalid syntax")
+    
+  private def removeComments(program: String): String =
+    val lines = program.split("\n")
+    val withoutComments = lines.map(_.split(';').head)
+    withoutComments.mkString("\n")
