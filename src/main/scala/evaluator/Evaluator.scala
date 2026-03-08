@@ -42,6 +42,9 @@ object Evaluator:
       }
       Value.Lambda(env, paramNames, body)
 
+    case Expr.Lst(Expr.Sym("begin") :: exps) =>
+      exps.map(eval(_, env)).last
+
     // general calling
     case Expr.Lst(proc :: args) =>
       eval(proc, env) match
