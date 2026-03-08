@@ -6,9 +6,15 @@ import ast.Expr
 
 object Parser:
   def parse(program: String): Expr =
-    val tokens = program
+    val normalized = program
+      .replace("\n", " ")
+      .replace("\r", " ")
+      .replace("\t", " ")
+
+    val tokens = normalized
       .replace("(", " ( ")
       .replace(")", " ) ")
+      .replace("'", " ' ")
       .trim
       .split("\\s+")
       .filter(_.nonEmpty)
@@ -16,6 +22,9 @@ object Parser:
       
     def readFrom(tokens: List[String]): (Expr, List[String]) = tokens match
       case Nil => sys.error("Unexpected EOF")
+      case "'" :: rest =>
+        val (expr, next) = readFrom(rest)
+        (Expr.Lst(List(Expr.Sym("quote"), expr)), next)
       case "(" :: rest =>
         val (elements, next) = readSeq(rest)
         (Expr.Lst(elements), next)
