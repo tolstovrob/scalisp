@@ -2,4 +2,4 @@ repl:
   sbt run
 
 run FILE:
-  sbt "runMain runner.runFile {{FILE}}"
+  sbt "runMain entrypoint.runFile {{FILE}}"
