@@ -15,3 +15,7 @@ just run path/to/file.lsp   # для запуска из файла
 sbt run                                             # для REPL
 sbt "runMain entrypoint.runFile path/to/file.lsp"   # для запуска из файла
 ```
+
+#
+
+Что умеет язык? Проще посмотреть в исходный код. В пакете `evaluator` описаны специальные формы, а в пакете `builtins` &mdash; встроенные функции. Последние будут пополнятся в дальнейшем.
