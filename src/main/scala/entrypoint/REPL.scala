@@ -11,7 +11,7 @@ import utils.Printer.valueToString
 def repl(): Unit =
   val env = Builtins.builtins
   val globalEnv = Env(env, None)
-  println("Scalist REPL")
+  println("[SCALISP]: running REPL")
 
   while true do
     print("> ")
