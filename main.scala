@@ -117,7 +117,40 @@ def eval(expr: Expr, env: Env): Value = expr match
 
 
 def globalEnv: Env =
-  val builtins = Map[String, Value]()
+  val builtins = Map[String, Value](
+    "+"    -> Value.Builtin(args => Value.Num(args.map { case Value.Num(d) => d }.sum)),
+    "-"    -> Value.Builtin {
+      case List(Value.Num(a)) => Value.Num(-a)
+      case List(Value.Num(a), Value.Num(b)) => Value.Num(a - b)
+      case _ => sys.error("- expects 1 or 2 numbers")
+    },
+    "*"    -> Value.Builtin(args => Value.Num(args.map { case Value.Num(d) => d }.product)),
+    "/"    -> Value.Builtin {
+      case List(Value.Num(a), Value.Num(b)) => Value.Num(a / b)
+      case _ => sys.error("/ expects 2 numbers")
+    },
+    "="    -> Value.Builtin(args => Value.Num(if args.map { case Value.Num(d) => d }.sliding(2).forall { case List(a,b) => a == b } then 1 else 0)),
+    "<"    -> Value.Builtin(args => Value.Num(if args.map { case Value.Num(d) => d }.sliding(2).forall { case List(a,b) => a < b } then 1 else 0)),
+    ">"    -> Value.Builtin(args => Value.Num(if args.map { case Value.Num(d) => d }.sliding(2).forall { case List(a,b) => a > b } then 1 else 0)),
+    "list" -> Value.Builtin(args => Value.Lst(args)),
+    "car"  -> Value.Builtin {
+      case List(Value.Lst(x :: _)) => x
+      case _ => sys.error("car expects non-empty list")
+    },
+    "cdr"  -> Value.Builtin {
+      case List(Value.Lst(_ :: xs)) => Value.Lst(xs)
+      case _ => sys.error("cdr expects non-empty list")
+    },
+    "cons" -> Value.Builtin {
+      case List(x, Value.Lst(xs)) => Value.Lst(x :: xs)
+      case _ => sys.error("cons expects element and list")
+    },
+    "null?" -> Value.Builtin {
+      case List(Value.Lst(Nil)) => Value.Num(1)
+      case _ => Value.Num(0)
+    },
+    "eq?"  -> Value.Builtin(args => Value.Num(if args.head == args(1) then 1 else 0))
+  )
   Env(builtins, None)
 
 
@@ -138,7 +171,7 @@ def repl(): Unit =
   while true do
     print("> ")
     val line = readLine()
-    
+
     line match
       case "exit" => return
       case _ =>
@@ -148,5 +181,3 @@ def repl(): Unit =
           println(valueToString(value))
         catch case e: Exception => println(s"Error: ${e.getMessage}")
     
-  
-   
