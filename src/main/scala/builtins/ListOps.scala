@@ -33,5 +33,10 @@ object ListOps:
       case List(Value.Lst(_)) => Value.Num(0)
       case List(other) => sys.error(s"null? expects list, got: ${valueToString(other)}")
       case other => sys.error(s"null? expects 1 argument, got: ${valueToStringList(other)}")
+    },
+
+    "append" -> Value.Builtin {
+      case List(Value.Lst(xs), Value.Lst(ys)) => Value.Lst(xs ++ ys)
+      case other =>  sys.error(s"append expects 2 arguments, got: ${valueToStringList(other)}")
     }
   )
